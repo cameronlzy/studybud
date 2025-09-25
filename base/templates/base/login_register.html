@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+{% if page == 'login'%}
+
+{% include 'base/login_component.html' %}
+
+{% else %}
+
+{% include 'base/signup_component.html' %}
+
+{% endif %}
+
+{% endblock content %}

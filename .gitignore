@@ -205,3 +205,41 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+=======
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Virtual environment
+.venv/
+env/
+venv/
+ENV/
+*.env
+.env.local
+.env.*
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+
+# Django stuff
+db.sqlite3
+media/
+staticfiles/
+*.log
+
+# Migrations (optional: keep if you want to version them)
+*/migrations/__pycache__/
+*/migrations/*.pyc
+# Uncomment next line if you don’t want to commit migration files:
+# */migrations/*
+
+# OS files
+.DS_Store
+Thumbs.db

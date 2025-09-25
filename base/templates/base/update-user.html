@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <main class="update-account layout">
+        <div class="container">
+            <div class="layout__box">
+                <div class="layout__boxHeader">
+                    <div class="layout__boxTitle">
+                        <a href="{% url 'home' %}">
+                            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                                viewBox="0 0 32 32">
+                                <title>arrow-left</title>
+                                <path
+                                    d="M13.723 2.286l-13.723 13.714 13.719 13.714 1.616-1.611-10.96-10.96h27.625v-2.286h-27.625l10.965-10.965-1.616-1.607z">
+                                </path>
+                            </svg>
+                        </a>
+                        <h3>Edit your profile</h3>
+                    </div>
+                </div>
+                <div class="layout__body">
+                  <form class="form" action="" method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- User fields -->
+                    {% comment %} USER FIELDS {% endcomment %}
+                    {% for field in user_form %}
+                      <div class="form__group">
+                        <label>{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}<small style="color:#fc4b0b">{{ field.errors }}</small>{% endif %}
+                      </div>
+                    {% endfor %}
+
+                    {% comment %} PROFILE IMAGE (custom render) {% endcomment %}
+                    <div class="form__group">
+                      <label>Profile image</label>
+
+                      {% if profile_form.instance.profile_img %}
+                        <div class="avatar avatar--large current-photo">
+                          <img src="{{ profile_form.instance.profile_img.url }}" alt="Current photo">
+                        </div>
+                      {% endif %}
+
+                      {{ profile_form.profile_img }} 
+
+                      {% if profile_form.profile_img.errors %}
+                        <small style="color:#fc4b0b">{{ profile_form.profile_img.errors }}</small>
+                      {% endif %}
+                    </div>
+
+                    <div class="form__action">
+                      <button class="btn btn--main" type="submit">Update</button>
+                    </div>
+                  </form>
+                </div>
+            </div>
+        </div>
+      </div>
+    </main>
+ {% endblock content %}
