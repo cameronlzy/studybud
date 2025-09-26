@@ -47,7 +47,6 @@ INSTALLED_APPS = [
 
     'django.contrib.staticfiles',
     "cloudinary_storage",
-"django_extensions",
     'rest_framework',
     'corsheaders',
     "cloudinary",
