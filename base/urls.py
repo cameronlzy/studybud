@@ -18,6 +18,3 @@ urlpatterns = [
     path('topics/', views.topicsPage, name="topics"),
     path('activity/', views.activityPage, name="activity"),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
