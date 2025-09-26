@@ -35,7 +35,7 @@ CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
 
 
 # Application definition
-# Django builds out these tables that are predicted to be needed for an app for the DB
+# Django builds out these tables that are predicted to be needed for aßn app for the DB
 # Command to migrate: python3 manage.py migrate after makemigrations
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -45,8 +45,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'base.apps.BaseConfig',
 
-    "cloudinary_storage",
     'django.contrib.staticfiles',
+    "cloudinary_storage",
 
     'rest_framework',
     'corsheaders',

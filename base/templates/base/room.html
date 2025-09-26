@@ -1,5 +1,6 @@
 {% extends "base.html" %} 
 {% block content %}
+{% load static %}
     <main class="profile-page layout layout--2">
       <div class="container">
         <!-- Room Start -->
@@ -81,7 +82,11 @@
                 <p>Hosted By</p>
                 <a href="{% url 'user-profile' room.host.id %}" class="room__author">
                   <div class="avatar avatar--small">
-                    <img src="https://randomuser.me/api/portraits/men/37.jpg" />
+                    {% if room.host.profile.profile_img %}
+                      <img src="{{ room.host.profile.profile_img.url }}" alt="Profile" />
+                    {% else %}
+                      <img src="{% static 'images/avatar.svg' %}" alt="Profile" />
+                    {% endif %}
                   </div>
                   <span>@{{room.host.username}}</span>
                 </a>
@@ -101,7 +106,11 @@
                     <div class="thread__author">
                       <a href="{% url 'user-profile' message.user.id %}" class="thread__authorInfo">
                         <div class="avatar avatar--small">
-                          <img src="https://randomuser.me/api/portraits/men/37.jpg" />
+                          {% if message.user.profile.profile_img %}
+                            <img src="{{ message.user.profile.profile_img.url }}" alt="Profile" />
+                          {% else %}
+                            <img src="{% static 'images/avatar.svg' %}" alt="Profile" />
+                          {% endif %}
                         </div>
                         <span>@{{message.user.username}}</span>
                       </a>
@@ -147,7 +156,11 @@
             {% for user in participants %}
             <a href="{% url 'user-profile' user.id %}" class="participant">
               <div class="avatar avatar--medium">
-                <img src="https://randomuser.me/api/portraits/men/37.jpg" />
+                {% if user.profile.profile_img %}
+                  <img src="{{ user.profile.profile_img.url }}" alt="Profile" />
+                {% else %}
+                  <img src="{% static 'images/avatar.svg' %}" alt="Profile" />
+                {% endif %}
               </div>
               <p>
                 {{user.username}}
