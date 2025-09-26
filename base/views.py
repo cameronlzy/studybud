@@ -170,20 +170,6 @@ def userProfile(request, pk):
     topics = Topic.objects.all()
     context = {'user': user, 'rooms': rooms, "topics": topics, "room_messages": room_messages}
     return render(request, 'base/profile.html', context)
-
-@login_required(login_url='login')
-def updateUser(request):
-    user = request.user
-    if request.method == "POST":
-        form = UserForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            return redirect('user-profile', pk=user.id)
-        return render(request, 'base/update-user.html', {'form': form}, status=400)
-    else:
-        # GET: show initial values from instance
-        form = UserForm(instance=user)
-        return render(request, 'base/update-user.html', {'form': form})
     
 def topicsPage(request): 
     q = request.GET.get('q') if request.GET.get('q') != None else ''

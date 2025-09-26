@@ -41,11 +41,14 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
     'base.apps.BaseConfig',
 
+    "cloudinary_storage",
+    'django.contrib.staticfiles',
+
     'rest_framework',
-    'corsheaders'
+    'corsheaders',
+    "cloudinary",
 ]
 
 MIDDLEWARE = [
@@ -120,8 +123,23 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME")
+CLOUDINARY_API_KEY    = os.environ.get("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET")
+
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": CLOUDINARY_CLOUD_NAME,
+    "API_KEY": CLOUDINARY_API_KEY,
+    "API_SECRET": CLOUDINARY_API_SECRET,
+    # Optional folder prefix for organization:
+    "MEDIA_TAG": "studybud",
+    "STATICFILES_MANIFEST_ROOT": BASE_DIR / "staticfiles",
+}
+
+if not all(CLOUDINARY_STORAGE.values()):
+    raise RuntimeError("Cloudinary env vars are missing")
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 
 # Internationalization

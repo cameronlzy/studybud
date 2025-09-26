@@ -1,10 +1,18 @@
 {% for room in rooms %}
+
+{% load static %}
 <div class="roomListRoom">
     <div class="roomListRoom__header">
         <a href="{% url 'user-profile' room.host.id %}" class="roomListRoom__author">
         <div class="avatar avatar--small">
-            <img src="https://randomuser.me/api/portraits/women/11.jpg" />
-        </div>
+                {% with p=room.host.profile %}
+                    {% if p.profile_img %}
+                        <img src="{{ p.profile_img.url }}" alt="{{ room.host.username }}">
+                    {% else %}
+                        <img src="{% static 'images/avatar.svg' %}" alt="{{ room.host.username }}">
+                    {% endif %}
+                {% endwith %}
+                </div>
         <span>@{{room.host.username}}</span>
         </a>
         <div class="roomListRoom__actions">

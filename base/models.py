@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from cloudinary_storage.storage import MediaCloudinaryStorage
 # For user built in diff import
 # Create your models here.
 
@@ -50,7 +51,7 @@ def profile_upload_path(instance, filename):
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    profile_img = models.ImageField(upload_to=profile_upload_path, blank=True, null=True)
+    profile_img = models.ImageField(storage=MediaCloudinaryStorage(), blank=True, null=True)
     # add more fields if you like, e.g. bio = models.TextField(blank=True)
 
     def __str__(self):
