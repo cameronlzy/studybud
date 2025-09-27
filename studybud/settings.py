@@ -14,6 +14,7 @@ import os
 import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 load_dotenv()
 
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     "cloudinary",
+    "channels",
 ]
 
 MIDDLEWARE = [
@@ -166,6 +168,8 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static'
 ]
 
+ASGI_APPLICATION = "studybud.asgi.application"
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
@@ -174,3 +178,17 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+parsed = urlparse(REDIS_URL)
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [REDIS_URL],
+            # Enable SSL when using rediss://
+            # "connection_kwargs": {"ssl": True} if parsed.scheme == "reddis" else {},
+        },
+    }
+}
