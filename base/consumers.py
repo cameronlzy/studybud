@@ -3,6 +3,7 @@ from channels.db import database_sync_to_async
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from redis.asyncio import Redis
+from .models import Room
 import json, time
 
 HEARTBEAT_TTL = 70
@@ -49,6 +50,11 @@ class RoomConsumer(AsyncWebsocketConsumer):
             if hasattr(self, "r"):
                 await self.r.close()
 
+    @database_sync_to_async
+    def _add_participant(self, room_id, user_id):
+        room = Room.objects.get(id=room_id)
+        room.participants.add(user_id)  
+
     async def receive(self, text_data):
         data = json.loads(text_data or "{}")
         msg_type = data.get("type")
@@ -71,6 +77,8 @@ class RoomConsumer(AsyncWebsocketConsumer):
             return
 
         msg = await self._save_message(self.user.id, self.room_id, body)
+        await self._add_participant(self.room_id, self.user.id)
+
         await self.channel_layer.group_send(
             self.group_name,
             {"type": "chat.message", "message": msg},
