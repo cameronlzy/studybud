@@ -173,14 +173,32 @@
         <!--  End -->
       </div>
     </main>
-    <script>
-  (function () {
+<script>
+(function () {
   const roomId = "{{ room.id }}";
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const socket = new WebSocket(`${protocol}://${location.host}/ws/rooms/${roomId}/`);
 
-  function addMessage(m) {
-    const threads = document.querySelector(".threads");
+  setInterval(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "ping" }));
+    }
+  }, 30000);
+
+  window.addEventListener("beforeunload", () => {
+    try { socket.send(JSON.stringify({ type: "bye" })); } catch {}
+  });
+
+
+  // pagination state (server rendered newest 10 first)
+  let offset = parseInt("{{ initial_loaded|default:10 }}", 10);
+  const limit = parseInt("{{ page_size|default:10 }}", 10);
+  let currentPresenceIds = new Set();
+
+  const threads = document.querySelector(".threads");
+
+  function addMessageNewest(m) {
+    // used for live messages (newest), prepends to the top
     const div = document.createElement("div");
     div.className = "thread";
     div.innerHTML = `
@@ -202,15 +220,71 @@
     threads.prepend(div);
   }
 
+  function messageHtml(m) {
+    return `
+      <div class="thread">
+        <div class="thread__top">
+          <div class="thread__author">
+            <a href="/profile/${m.user}/" class="thread__authorInfo">
+              <div class="avatar avatar--small" data-user-id="${m.user}">
+                ${m.profile_img
+                  ? `<img src="${m.profile_img}" alt="Profile"/>`
+                  : `<img src="{% static 'images/avatar.svg' %}" alt="Profile"/>`}
+              </div>
+              <span>@${m.username}</span>
+            </a>
+            <span class="thread__date">${new Date(m.created).toLocaleString()}</span>
+          </div>
+        </div>
+        <div class="thread__details"></div>
+      </div>`;
+  }
+
+  function appendOlder(messages) {
+    // API returns newest-first; when appending older history we want
+    // oldest of the batch to appear last, so loop in reverse
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      const wrap = document.createElement("div");
+      wrap.innerHTML = messageHtml(m);
+      wrap.querySelector(".thread__details").textContent = m.body;
+      threads.appendChild(wrap.firstElementChild);
+    }
+    // re-apply presence so appended avatars get green dots
+    applyPresence(currentPresenceIds);
+  }
+
+  async function fetchOlder() {
+    try {
+      const url = `/rooms/${roomId}/messages.json?offset=${offset}&limit=${limit}`;
+      const res = await fetch(url, { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.messages) && data.messages.length) {
+        appendOlder(data.messages);
+        offset += data.messages.length;
+        if (data.has_more) {
+          // pace the background loads a bit
+          setTimeout(fetchOlder, 250);
+        }
+      }
+    } catch (err) {
+      // silent fail is fine for background loading
+    }
+  }
+
   function applyPresence(userIdsSet) {
     document.querySelectorAll('.avatar[data-user-id]').forEach(el => {
       const uid = Number(el.getAttribute('data-user-id'));
-      if (userIdsSet.has(uid)) el.classList.add('active'); else el.classList.remove('active');
+      if (userIdsSet.has(uid)) {
+        el.classList.add('active');   // green dot (your CSS handles it)
+      } else {
+        el.classList.remove('active'); // gray dot
+      }
     });
   }
 
-  let currentPresenceIds = new Set();
-
+  // websocket events
   socket.addEventListener('message', (e) => {
     const data = JSON.parse(e.data);
 
@@ -221,36 +295,27 @@
     }
 
     if (data.type === 'chat') {
-      addMessage(data.message);
-      applyPresence(currentPresenceIds); // ensures green dot on newly inserted avatar
+      addMessageNewest(data.message);
+      applyPresence(currentPresenceIds); // ensure dot on the newly inserted avatar
       return;
     }
-  })
+  });
 
-
-    const form = document.querySelector('.room__message form');
-    if (form) {
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const input = form.querySelector('input[name="body"]');
-        const body = (input.value || "").trim();
-        if (!body || socket.readyState !== WebSocket.OPEN) return;
-        socket.send(JSON.stringify({ body }));
-        input.value = "";
-      });
-    }
-
-    function applyPresence(userIdsSet) {
-    document.querySelectorAll('.avatar[data-user-id]').forEach(el => {
-      const uid = el.getAttribute('data-user-id');
-      if (uid && userIdsSet.has(Number(uid))) {
-        el.classList.add('active');   // green dot (already in your CSS)
-      } else {
-        el.classList.remove('active'); // gray dot
-      }
+  // send chat
+  const form = document.querySelector('.room__message form');
+  if (form) {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = form.querySelector('input[name="body"]');
+      const body = (input.value || "").trim();
+      if (!body || socket.readyState !== WebSocket.OPEN) return;
+      socket.send(JSON.stringify({ body }));
+      input.value = "";
     });
   }
 
-  })();
+  // kick off background loading of older history
+  fetchOlder();
+})();
 </script>
 {% endblock content %}

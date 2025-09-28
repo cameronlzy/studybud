@@ -5,6 +5,8 @@ from django.contrib.auth.models import AnonymousUser
 from redis.asyncio import Redis
 import json, time
 
+HEARTBEAT_TTL = 70
+
 def room_presence_keys(room_id, user_id=None):
     base = f"presence:room:{room_id}"
     return {
@@ -32,6 +34,9 @@ class RoomConsumer(AsyncWebsocketConsumer):
         # add to presence (with ref count so multi-tabs work)
         await self._presence_increment()
 
+        # to broadcast for disconnections
+        await self._touch_heartbeat()
+
         # send current presence snapshot to everyone
         await self._broadcast_presence()
 
@@ -46,17 +51,26 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data or "{}")
-        if "ping" in data:
-            # optional: keepalive hook if you want to track last_seen
-            await self.r.setex(f"last_seen:user:{self.user.id}", 120, int(time.time()))
+        msg_type = data.get("type")
+
+        # Heartbeat from client
+        if msg_type == "ping":
+            await self._touch_heartbeat()
+            await self._broadcast_presence()
             return
 
-        # existing chat handling…
+        # Graceful disconnect
+        if msg_type == "bye":
+            await self._presence_decrement()
+            await self._broadcast_presence()
+            return
+
+        # Regular chat message
         body = (data.get("body") or "").strip()
         if not body:
             return
-        msg = await self._save_message(self.user.id, self.room_id, body)
 
+        msg = await self._save_message(self.user.id, self.room_id, body)
         await self.channel_layer.group_send(
             self.group_name,
             {"type": "chat.message", "message": msg},
@@ -98,12 +112,37 @@ class RoomConsumer(AsyncWebsocketConsumer):
             await pipe.execute()
 
     async def _broadcast_presence(self):
-        user_ids = await self.r.smembers(room_presence_keys(self.room_id)["members"])
-        users = await self._users_payload(user_ids)
+        live_ids = await self._live_user_ids()
+        users = await self._users_payload(live_ids)
         await self.channel_layer.group_send(
             self.group_name,
             {"type": "presence.update", "users": users},
         )
+    
+    async def _touch_heartbeat(self):
+        """
+        Set/refresh a per-user heartbeat key that expires automatically.
+        """
+        key = f"presence:room:{self.room_id}:user:{self.user.id}:hb"
+        await self.r.setex(key, HEARTBEAT_TTL, "1")
+
+    async def _live_user_ids(self):
+        """
+        From the room members set, only keep users whose heartbeat key still exists.
+        """
+        members_key = room_presence_keys(self.room_id)["members"]
+        user_ids = await self.r.smembers(members_key)
+        if not user_ids:
+            return []
+
+        pipe = self.r.pipeline()
+        for uid in user_ids:
+            key = f"presence:room:{self.room_id}:user:{uid}:hb"
+            pipe.exists(key)
+        exists_flags = await pipe.execute()
+
+        # keep only users with a live heartbeat
+        return [int(uid) for uid, ok in zip(user_ids, exists_flags) if ok]
 
     @database_sync_to_async
     def _users_payload(self, user_ids):

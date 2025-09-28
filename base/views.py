@@ -7,6 +7,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm
 from .models import Room, Topic, User, Message
 from .forms import RoomForm, UserForm, ProfileForm
+from django.http import JsonResponse
 
 # Create your views here.
 
@@ -80,7 +81,7 @@ def home(request):
 
 def room(request, pk):
     room = Room.objects.get(id=pk)
-    roomMessages = room.message_set.all().order_by('-created')
+    roomMessages = room.message_set.all().order_by('-created')[:10]
     participants = room.participants.all()
     # message_set -> modelname_set is to access children 
 
@@ -94,7 +95,12 @@ def room(request, pk):
         # So that they are dynamically added once they comment
         return redirect('room', pk=room.id)
         # To avoid POST from messing up functionality redirect fully reloads
-    context = {'room': room, 'roomMessages': roomMessages, 'participants': participants}
+    context = {'room': room, 
+               'roomMessages': roomMessages, 
+               'participants': participants,
+               'initial_loaded': len(roomMessages),
+               'page_size': 10,
+               }
     return render(request, 'base/room.html', context)
 
 # Serves as a middleware to require login
@@ -202,4 +208,40 @@ def updateUser(request):
     return render(request, "base/update-user.html", {
         "user_form": user_form,
         "profile_form": profile_form
+    })
+
+def room_messages_json(request, pk):
+    try:
+        offset = int(request.GET.get("offset", 0))
+        limit = int(request.GET.get("limit", 10))
+        limit = max(1, min(limit, 100))
+    except ValueError:
+        offset, limit = 0, 10
+
+    qs = (Message.objects
+          .filter(room_id=pk)
+          .select_related("user__profile")
+          .order_by("-created"))
+
+    total = qs.count()
+    items = list(qs[offset:offset+limit])
+
+    data = []
+    for m in items:
+        img = getattr(getattr(m.user, "profile", None), "profile_img", None)
+        data.append({
+            "id": m.id,
+            "user": m.user_id,
+            "username": m.user.username,
+            "body": m.body,
+            "created": m.created.isoformat(),
+            "profile_img": (img.url if img else None),
+        })
+
+    return JsonResponse({
+        "messages": data,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": (offset + len(items) < total),
     })
