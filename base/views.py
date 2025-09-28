@@ -15,27 +15,37 @@ def loginPage(request):
     page = 'login'
     if request.user.is_authenticated:
         return redirect('home')
-    if request.method == 'POST':
-        username = request.POST.get('username').lower()
-        password = request.POST.get('password')
 
-        try: 
-            user = User.objects.get(username=username)
+    if request.method == 'POST':
+        username = (request.POST.get('username') or '').lower().strip()
+        password = (request.POST.get('password') or '')
+
+        try:
+            user_obj = User.objects.get(username=username)
         except User.DoesNotExist:
-            messages.error(request, 'User does not exist')
+            messages.error(request, 'User does not exist.')
             return redirect('login')
 
-        
+        if not user_obj.is_active:
+            messages.error(request, 'This account is inactive.')
+            return redirect('login')
+
+        # Check password explicitly so we can show a specific message
+        if not user_obj.check_password(password):
+            messages.error(request, 'Incorrect password.')
+            return redirect('login')
+
+        # If we reached here, credentials are correct
         user = authenticate(request, username=username, password=password)
         if user is None:
-            messages.error(request, 'Username OR password is invalid')
+            # Extremely rare path (custom backend quirks)
+            messages.error(request, 'Authentication failed due to a server configuration issue.')
             return redirect('login')
-        else:
-            login(request, user)
-            return redirect('home')
 
-    context = {'page': page}
-    return render(request, 'base/login_register.html', context)
+        login(request, user)
+        return redirect('home')
+
+    return render(request, 'base/login_register.html', {'page': page})
 
 def logoutUser(request):
     logout(request)
@@ -43,21 +53,26 @@ def logoutUser(request):
 
 def registerUser(request):
     page = 'register'
-    form = UserCreationForm()
+    form = UserCreationForm(request.POST or None)
 
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            # commit = False is so that can access user object right away for cleaning of data
             user.username = user.username.lower()
             user.save()
             login(request, user)
             return redirect('home')
         else:
-            messages.error(request, 'An error occured during registration')
-    context = {'page': page, 'form': form}
-    return render(request, 'base/login_register.html', context)
+            # push all form errors into the messages framework
+            for field, errors in form.errors.items():
+                label = "Password" if field == "password2" else field.capitalize()
+                for e in errors:
+                    messages.error(request, f"{label}: {e}")
+
+    return render(request, 'base/login_register.html', {
+        'page': page,
+        'form': form,
+    })
 
 def home(request):
     q = request.GET.get('q') if request.GET.get('q') != None else ''
