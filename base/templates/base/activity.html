@@ -23,7 +23,7 @@
             <div class="activities__box">
               <div class="activities__boxHeader roomListRoom__header">
                   <a href="{% url 'user-profile' message.user.id %}" class="roomListRoom__author">
-                  div class="avatar avatar--small">
+                  <div class="avatar avatar--small">
                   {% with p=message.user.profile %}
                       {% if p.profile_img %}
                           <img src="{{ p.profile_img.url }}" alt="{{ message.user.username }}">
